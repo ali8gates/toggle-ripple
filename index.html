@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ripple — Event→Impact Tracer | Reflexivity Prototype</title>
+<meta name="description" content="Prototype: trace a market event through the knowledge graph, surface non-obvious sensitivities, spin up a temporary subgraph." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111820; --panel2:#0e141b; --line:#1e2a36;
+    --ink:#e6edf3; --mute:#8b9aa8; --faint:#5c6b78;
+    --teal:#2dd4bf; --teal-dim:#134e4a;
+    --blue:#4a9eff; --green:#3fb950; --amber:#e3a008; --red:#f85149; --purp:#a371f7;
+    --shadow:0 8px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;
+    font-size:14px;line-height:1.5;overflow:hidden;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .app{display:grid;grid-template-rows:auto 1fr;height:100vh}
+
+  /* top bar */
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0e151d,#0b0f14)}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.02em}
+  .logo svg{width:26px;height:26px}
+  .logo .sub{color:var(--faint);font-weight:500;font-size:12px;padding-left:10px;border-left:1px solid var(--line)}
+  .live{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--mute);font-size:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* layout */
+  .main{display:grid;grid-template-columns:300px 1fr 400px;min-height:0}
+  .col{overflow-y:auto;min-height:0}
+  .col::-webkit-scrollbar{width:8px}.col::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .left{border-right:1px solid var(--line);background:var(--panel2)}
+  .right{border-left:1px solid var(--line);background:var(--panel2)}
+  .center{position:relative;background:radial-gradient(circle at 50% 40%,#0f1620,#0b0f14 70%)}
+
+  .sec{padding:16px 18px;border-bottom:1px solid var(--line)}
+  .sec h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:12px;font-weight:600}
+
+  /* event chips */
+  .chip{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer;color:var(--ink);
+    transition:.15s;position:relative}
+  .chip:hover{border-color:var(--teal);transform:translateY(-1px)}
+  .chip.active{border-color:var(--teal);background:linear-gradient(180deg,#12211f,#0e141b);box-shadow:0 0 0 1px var(--teal-dim)}
+  .chip .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);font-weight:600}
+  .chip .t{font-weight:600;margin:4px 0 2px;font-size:13.5px;line-height:1.35}
+  .chip .d{font-size:11.5px;color:var(--mute)}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--teal);color:#04231f;border:none;
+    border-radius:9px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;transition:.15s;font-family:inherit}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal-dim)}
+  .btn.ghost:hover{background:var(--teal-dim)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* subgraph controls */
+  .ctrl{margin-bottom:12px}
+  .ctrl label{display:block;font-size:11px;color:var(--mute);margin-bottom:5px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:44px;background:var(--panel);border:1px solid var(--line);color:var(--mute);
+    padding:6px 8px;border-radius:7px;font-size:11.5px;cursor:pointer;font-family:inherit;transition:.12s}
+  .seg button.on{background:var(--teal-dim);border-color:var(--teal);color:var(--teal);font-weight:600}
+  .toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+  .toggle span{font-size:12.5px}
+  .sw{width:38px;height:22px;background:var(--line);border-radius:99px;position:relative;cursor:pointer;transition:.15s;flex:none}
+  .sw.on{background:var(--teal)}
+  .sw::after{content:"";position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.15s}
+  .sw.on::after{left:19px}
+
+  /* center graph */
+  #graph{width:100%;height:100%;display:block}
+  .center .hud{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;
+    align-items:flex-start;pointer-events:none}
+  .badge{background:rgba(17,24,32,.85);border:1px solid var(--line);border-radius:8px;padding:7px 12px;
+    font-size:12px;color:var(--mute);backdrop-filter:blur(6px);pointer-events:auto}
+  .badge b{color:var(--ink)}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--mute)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:baseline}
+  .center .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--faint);gap:10px;text-align:center}
+  .center .empty svg{width:54px;height:54px;opacity:.4}
+
+  .node-lbl{font-family:'Inter';font-weight:600;fill:var(--ink);pointer-events:none}
+  .node-sub{font-family:'JetBrains Mono';fill:var(--mute);pointer-events:none}
+  .link{stroke:var(--line);stroke-width:1.5;fill:none;opacity:0}
+  .edge-lbl{font-family:'JetBrains Mono';font-size:9px;fill:var(--faint);pointer-events:none;opacity:0}
+
+  /* right panels */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:14px 16px;overflow:hidden;box-shadow:var(--shadow)}
+  .card .hd{padding:11px 15px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;
+    display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+  .card .hd .i{width:7px;height:7px;border-radius:50%}
+  .card .bd{padding:14px 15px}
+  .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);margin:2px 0 4px;font-weight:600}
+  .ripple-step{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:13px}
+  .ripple-step .hop{font-family:'JetBrains Mono';font-size:10px;color:var(--teal);flex:none;width:34px}
+  .trade{margin-top:10px;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.3);border-radius:8px;padding:10px 12px}
+  .trade .lbl{color:var(--red);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--faint);font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;padding:0 0 8px}
+  td{padding:7px 0;border-top:1px solid var(--line);vertical-align:middle}
+  .conf{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;font-family:'JetBrains Mono'}
+  .conf.hi{background:rgba(63,185,80,.15);color:var(--green)}
+  .conf.md{background:rgba(227,160,8,.15);color:var(--amber)}
+  .src{color:var(--mute);font-size:11px}
+
+  .price-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+  .price-row:first-child{border-top:none}
+  .tk{font-family:'JetBrains Mono';font-weight:700;font-size:13px}
+  .nm{font-size:11px;color:var(--mute);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .px{font-family:'JetBrains Mono';font-size:13px;text-align:right}
+  .chg{font-family:'JetBrains Mono';font-size:11.5px;font-weight:600}
+  .up{color:var(--green)}.down{color:var(--red)}
+  .empty-r{padding:20px 15px;color:var(--faint);font-size:12.5px;text-align:center}
+
+  .foot{padding:12px 16px;color:var(--faint);font-size:10.5px;border-top:1px solid var(--line);line-height:1.5}
+  .foot b{color:var(--mute)}
+  .banner{background:linear-gradient(90deg,#12211f,#0e141b);border:1px solid var(--teal-dim);color:var(--mute);
+    font-size:11px;padding:8px 16px;text-align:center}
+  .banner b{color:var(--teal)}
+
+  /* nlp box */
+  .nlp{display:flex;gap:8px}
+  .nlp input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+    padding:10px 12px;font-size:13px;font-family:inherit;outline:none;transition:.15s;min-width:0}
+  .nlp input:focus{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal-dim)}
+  .nlp input::placeholder{color:var(--faint)}
+  .nlp .btn{padding:10px 14px}
+  .nlp-hint{font-size:11px;color:var(--faint);margin-top:8px;line-height:1.4}
+  .nlp-hint.warn{color:var(--amber)}
+
+  /* responsive: stack on narrow screens so nothing collapses */
+  @media (max-width:1100px){
+    body{overflow:auto}
+    .app{grid-template-rows:auto auto 1fr;height:auto;min-height:100vh}
+    .main{grid-template-columns:1fr;min-height:0}
+    .col{overflow:visible}
+    .left,.right{border:none;border-bottom:1px solid var(--line)}
+    .center{min-height:520px;order:-1;border-bottom:1px solid var(--line)}
+    .live{font-size:11px}
+  }
+  @media (max-width:520px){
+    .center{min-height:440px}
+    .logo .sub{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 32 32" fill="none" aria-label="Ripple">
+        <circle cx="16" cy="16" r="4" fill="var(--teal)"/>
+        <circle cx="16" cy="16" r="9" stroke="var(--teal)" stroke-width="1.5" opacity=".6"/>
+        <circle cx="16" cy="16" r="14" stroke="var(--teal)" stroke-width="1.5" opacity=".3"/>
+      </svg>
+      Ripple <span class="sub">Reflexivity · Event to Impact Tracer</span>
+    </div>
+    <div class="live"><span class="dot"></span> Live prices · <span id="ts" class="mono"></span></div>
+  </header>
+
+  <div class="banner">One event, traced through the graph, with a throwaway subgraph you can spin up and discard. The seed graph is illustrative. <b>The prices are real and pulled live.</b></div>
+
+  <div class="main">
+    <!-- LEFT: events + subgraph builder -->
+    <div class="col left">
+      <div class="sec">
+        <h3>Ask in plain English</h3>
+        <div class="nlp">
+          <input id="nlp-input" type="text" placeholder="e.g. what happens if a fertilizer port shuts?" autocomplete="off" />
+          <button class="btn" id="nlp-go">Ask</button>
+        </div>
+        <div id="nlp-hint" class="nlp-hint">Type a question and Ripple maps it to the right event, or pick one below.</div>
+      </div>
+      <div class="sec">
+        <h3>Or pick an event</h3>
+        <div id="events"></div>
+      </div>
+      <div class="sec">
+        <h3>Temporary subgraph</h3>
+        <p style="font-size:11.5px;color:var(--mute);margin-bottom:14px">Scope a throwaway graph to one event, trace it, then discard it. It never touches the base graph.</p>
+        <div class="ctrl">
+          <label>Trace depth (hops)</label>
+          <div class="seg" id="depth">
+            <button data-d="1">1</button><button data-d="2">2</button><button class="on" data-d="3">3</button>
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>Ranking bias</label>
+          <div class="seg" id="bias">
+            <button class="on" data-b="precision">Precision</button><button data-b="recall">Recall</button>
+          </div>
+        </div>
+        <div class="toggle"><span>Include time-series signals</span><div class="sw on" id="sw-ts"></div></div>
+        <div class="toggle"><span>Show edge provenance</span><div class="sw on" id="sw-prov"></div></div>
+        <button class="btn" id="run" style="width:100%;justify-content:center;margin-top:8px">⚡ Trace ripple</button>
+        <button class="btn ghost" id="reset" style="width:100%;justify-content:center;margin-top:8px">Discard subgraph</button>
+      </div>
+      <div class="foot">
+        <b>How it runs:</b> the traversal walks existing typed edges in Neo4j and ranks them. The language layer only reads your question and writes the narrative. It never creates or scores an edge. The catalyst-validation pipeline decides which events are real enough to trace. Confidence stays visible, and low-confidence edges are flagged rather than hidden.
+      </div>
+    </div>
+
+    <!-- CENTER: graph -->
+    <div class="col center" style="overflow:hidden">
+      <div class="hud">
+        <div class="badge" id="status">Select an event to begin</div>
+        <div class="badge legend">
+          <span><i style="background:var(--amber)"></i>Event</span>
+          <span><i style="background:var(--blue)"></i>1st</span>
+          <span><i style="background:var(--green)"></i>2nd</span>
+          <span><i style="background:var(--purp)"></i>3rd</span>
+          <span><i style="background:var(--red)"></i>Tradeable</span>
+        </div>
+      </div>
+      <svg id="graph"></svg>
+      <div class="empty" id="empty">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="4" fill="currentColor"/><circle cx="16" cy="16" r="9" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="1.5"/></svg>
+        <div>Pick an event, then <b style="color:var(--teal)">Trace ripple</b><br>to watch it propagate through the graph.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: narrative + provenance + prices -->
+    <div class="col right">
+      <div class="card">
+        <div class="hd" style="color:var(--purp)"><span class="i" style="background:var(--purp)"></span>Narrative: what the naked eye misses</div>
+        <div class="bd" id="narrative">
+          <div class="empty-r">Trace an event to generate its narrative card.</div>
+        </div>
+      </div>
+      <div class="card" id="provCard" style="display:none">
+        <div class="hd" style="color:var(--green)"><span class="i" style="background:var(--green)"></span>Provenance &amp; confidence</div>
+        <div class="bd"><table id="provTable"></table>
+          <p style="margin-top:10px;font-size:10.5px;color:var(--faint)">Every edge cites its source. Low-confidence edges are flagged, not hidden. Investment grade, not model prose.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd" style="color:var(--teal)"><span class="i" style="background:var(--teal)"></span>Live tape: nodes in this trace</div>
+        <div class="bd" id="prices"><div class="empty-r">Impacted tickers appear here with live prices.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

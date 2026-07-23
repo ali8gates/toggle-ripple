@@ -1,0 +1,100 @@
+{
+  "JPM": {
+    "name": "JPMorgan Chase & Co.",
+    "price": 347.95,
+    "change": -0.26,
+    "changePct": -0.07,
+    "prevClose": 348.21
+  },
+  "GS": {
+    "name": "The Goldman Sachs Group, Inc.",
+    "price": 1068.17,
+    "change": -30.03,
+    "changePct": -2.73,
+    "prevClose": 1098.2
+  },
+  "MS": {
+    "name": "Morgan Stanley",
+    "price": 214.81,
+    "change": -3.69,
+    "changePct": -1.69,
+    "prevClose": 218.5
+  },
+  "MOS": {
+    "name": "The Mosaic Company",
+    "price": 22.56,
+    "change": -0.22,
+    "changePct": -0.97,
+    "prevClose": 22.78
+  },
+  "CF": {
+    "name": "CF Industries Holdings, Inc.",
+    "price": 128.25,
+    "change": 0.9,
+    "changePct": 0.71,
+    "prevClose": 127.35
+  },
+  "ADM": {
+    "name": "Archer-Daniels-Midland Company",
+    "price": 87.82,
+    "change": 0.5,
+    "changePct": 0.57,
+    "prevClose": 87.32
+  },
+  "NTR": {
+    "name": "Nutrien Ltd.",
+    "price": 68.76,
+    "change": 0.26,
+    "changePct": 0.38,
+    "prevClose": 68.5
+  },
+  "MP": {
+    "name": "MP Materials Corp.",
+    "price": 44.07,
+    "change": -1.61,
+    "changePct": -3.53,
+    "prevClose": 45.68
+  },
+  "LMT": {
+    "name": "Lockheed Martin Corporation",
+    "price": 568.13,
+    "change": 53.77,
+    "changePct": 10.45,
+    "prevClose": 514.36
+  },
+  "RTX": {
+    "name": "RTX Corporation",
+    "price": 209.66,
+    "change": 14.78,
+    "changePct": 7.59,
+    "prevClose": 194.88
+  },
+  "TSLA": {
+    "name": "Tesla, Inc.",
+    "price": 321.57,
+    "change": -52.44,
+    "changePct": -14.02,
+    "prevClose": 374.01
+  },
+  "ALB": {
+    "name": "Albemarle Corporation",
+    "price": 116.88,
+    "change": -0.57,
+    "changePct": -0.49,
+    "prevClose": 117.45
+  },
+  "CORN": {
+    "name": "Teucrium Corn Fund",
+    "price": 18.29,
+    "change": 0.01,
+    "changePct": 0.03,
+    "prevClose": 18.28
+  },
+  "WEAT": {
+    "name": "Teucrium Wheat Fund",
+    "price": 25.7,
+    "change": -0.29,
+    "changePct": -1.13,
+    "prevClose": 26.0
+  }
+}
