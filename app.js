@@ -1,11 +1,10 @@
-// ============ Ripple: Event to Impact Tracer (prototype demo) ============
-// The seed graph is illustrative. The prices are real, pulled live and baked into quotes.json.
-// The plain-English box maps a typed question to the right event with keyword matching.
-// In production this is where the language model reads intent; here it runs locally so nothing breaks.
+// The seed graph is illustrative. The prices are real, pulled live and baked into quotes.json
+// The plain-English box maps a typed question to the right event with keyword matching
+// In production this is where the language model reads intent; here it runs locally so nothing breaks
 
 let QUOTES = {};
 
-// ---- Seed knowledge graph: three event scenarios ----
+//  Seed knowledge graph: three event scenarios 
 // Each node: id, label, sub (ticker or note), degree (0=event,1,2,3), tradeable, ticker
 // Each edge: from, to, rel (relationship type), src (provenance), conf (0-1)
 const SCENARIOS = {
